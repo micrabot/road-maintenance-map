@@ -45,4 +45,336 @@
       max-width: 250px;
     }
     
-    .legen
+    .legend h4 {
+      margin: 0 0 12px 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .legend-item {
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+    
+    .legend-color {
+      width: 24px;
+      height: 4px;
+      margin-right: 10px;
+      border-radius: 2px;
+    }
+    
+    .credit {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.95);
+      padding: 8px 14px;
+      font-size: 11px;
+      border-radius: 4px;
+      z-index: 1000;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: white;
+      padding: 25px 45px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    
+    .loading-text {
+      font-size: 14px;
+      color: #333;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Road Maintenance Responsibility Map</h1>
+    <p>Erie & Niagara Counties, New York</p>
+  </div>
+  
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading road data...</div>
+  </div>
+  
+  <div id="map"></div>
+  <div class="credit">Created by Chris Kivi</div>
+  
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function() {
+      var map = L.map('map').setView([43.0, -78.85], 10);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      var colors = {
+        'NYSDOT': '#e31a1c',
+        'Erie County': '#ff7f00',
+        'Niagara County': '#ff9f40',
+        'Buffalo': '#1f78b4',
+        'Lackawanna': '#2171b5',
+        'Tonawanda': '#4292c6',
+        'North Tonawanda': '#6baed6',
+        'Lockport': '#9ecae1',
+        'Niagara Falls': '#2b8cbe',
+        'Amherst': '#33a02c',
+        'Tonawanda (Town)': '#66c2a5',
+        'Cheektowaga': '#8dd3c7',
+        'West Seneca': '#41ab5d',
+        'Hamburg': '#74c476',
+        'Lancaster': '#a1d99b',
+        'Orchard Park': '#c7e9c0',
+        'Grand Island': '#addd8e',
+        'Clarence': '#78c679',
+        'Kenmore': '#b2df8a',
+        'Other': '#999999'
+      };
+
+      var contacts = {
+        'NYSDOT': { phone: '(716) 847-3238', name: 'NYSDOT Region 5' },
+        'Erie County': { phone: '(716) 858-8300', alt: 'Potholes: (716) 858-7966', name: 'Erie County DPW' },
+        'Niagara County': { phone: '(716) 439-7242', name: 'Niagara County DPW' },
+        'Buffalo': { phone: '(716) 851-5636', name: 'City of Buffalo DPW' },
+        'Lackawanna': { phone: '(716) 827-6486', name: 'City of Lackawanna DPW' },
+        'Tonawanda': { phone: '(716) 695-8555', name: 'City of Tonawanda DPW' },
+        'Alden': { phone: '(716) 937-3715', name: 'Town of Alden Highway' },
+        'Amherst': { phone: '(716) 631-7117', name: 'Town of Amherst Highway' },
+        'Aurora': { phone: '(716) 652-1111', name: 'Town of Aurora Highway' },
+        'Boston': { phone: '(716) 941-3405', name: 'Town of Boston Highway' },
+        'Brant': { phone: '(716) 549-0050', name: 'Town of Brant Highway' },
+        'Cheektowaga': { phone: '(716) 686-3400', name: 'Town of Cheektowaga Highway' },
+        'Clarence': { phone: '(716) 741-8940', name: 'Town of Clarence Highway' },
+        'Colden': { phone: '(716) 941-9434', name: 'Town of Colden Highway' },
+        'Collins': { phone: '(716) 532-2114', name: 'Town of Collins Highway' },
+        'Concord': { phone: '(716) 592-3400', name: 'Town of Concord Highway' },
+        'Eden': { phone: '(716) 992-3408', name: 'Town of Eden Highway' },
+        'Elma': { phone: '(716) 652-2722', name: 'Town of Elma Highway' },
+        'Evans': { phone: '(716) 926-2301', name: 'Town of Evans Highway' },
+        'Grand Island': { phone: '(716) 773-9600', name: 'Town of Grand Island Highway' },
+        'Hamburg': { phone: '(716) 649-6111', name: 'Town of Hamburg Highway' },
+        'Holland': { phone: '(716) 537-9474', name: 'Town of Holland Highway' },
+        'Lancaster': { phone: '(716) 683-1680', name: 'Town of Lancaster Highway' },
+        'Marilla': { phone: '(716) 652-1050', name: 'Town of Marilla Highway' },
+        'Newstead': { phone: '(716) 542-9654', name: 'Town of Newstead Highway' },
+        'North Collins': { phone: '(716) 337-3212', name: 'Town of North Collins Highway' },
+        'Orchard Park': { phone: '(716) 662-6410', name: 'Town of Orchard Park Highway' },
+        'Sardinia': { phone: '(716) 496-5700', name: 'Town of Sardinia Highway' },
+        'Tonawanda (Town)': { phone: '(716) 877-8800', name: 'Town of Tonawanda Highway' },
+        'Wales': { phone: '(716) 652-2088', name: 'Town of Wales Highway' },
+        'West Seneca': { phone: '(716) 674-4850', name: 'Town of West Seneca Highway' },
+        'Kenmore': { phone: '(716) 873-5958', name: 'Village of Kenmore DPW' },
+        'Williamsville': { phone: '(716) 632-4120', name: 'Village of Williamsville DPW' },
+        'Depew': { phone: '(716) 683-1400', name: 'Village of Depew DPW' },
+        'Lockport': { phone: '(716) 439-6680', name: 'City of Lockport DPW' },
+        'North Tonawanda': { phone: '(716) 693-1010', name: 'City of North Tonawanda DPW' },
+        'Niagara Falls': { phone: '(716) 286-4300', name: 'City of Niagara Falls DPW' },
+        'Cambria': { phone: '(716) 433-8859', name: 'Town of Cambria Highway' },
+        'Hartland': { phone: '(716) 778-7230', name: 'Town of Hartland Highway' },
+        'Lewiston': { phone: '(716) 754-8213', name: 'Town of Lewiston Highway' },
+        'Newfane': { phone: '(716) 778-7225', name: 'Town of Newfane Highway' },
+        'Pendleton': { phone: '(716) 625-8833', name: 'Town of Pendleton Highway' },
+        'Porter': { phone: '(716) 745-7789', name: 'Town of Porter Highway' },
+        'Royalton': { phone: '(716) 735-7024', name: 'Town of Royalton Highway' },
+        'Somerset': { phone: '(716) 795-3609', name: 'Town of Somerset Highway' },
+        'Wheatfield': { phone: '(716) 694-0590', name: 'Town of Wheatfield Highway' },
+        'Wilson': { phone: '(716) 751-6370', name: 'Town of Wilson Highway' },
+        'Other': { phone: 'Contact local municipality', name: 'Local Municipality' }
+      };
+
+      var boundaries = {
+        'Buffalo': [[42.82, -78.92], [42.97, -78.79]],
+        'Amherst': [[42.93, -78.86], [43.08, -78.70]],
+        'Cheektowaga': [[42.88, -78.82], [42.98, -78.69]],
+        'West Seneca': [[42.80, -78.85], [42.88, -78.70]],
+        'Tonawanda (Town)': [[42.96, -78.93], [43.03, -78.86]],
+        'North Tonawanda': [[43.02, -78.93], [43.07, -78.84]],
+        'Niagara Falls': [[43.05, -79.08], [43.12, -78.98]],
+        'Lockport': [[43.15, -78.74], [43.20, -78.66]],
+        'Hamburg': [[42.68, -78.88], [42.76, -78.78]],
+        'Lancaster': [[42.87, -78.70], [42.92, -78.60]],
+        'Clarence': [[42.96, -78.65], [43.03, -78.50]],
+        'Grand Island': [[42.98, -78.99], [43.06, -78.93]],
+        'Orchard Park': [[42.74, -78.80], [42.80, -78.68]],
+        'Kenmore': [[42.95, -78.88], [42.98, -78.85]]
+      };
+
+      function getJurisdiction(tags, coords) {
+        var highway = tags.highway || '';
+        var name = tags.name || 'Unnamed Road';
+        var ref = tags.ref || '';
+        
+        if (highway === 'motorway' || highway === 'motorway_link' || highway === 'trunk') {
+          return 'NYSDOT';
+        }
+        if (ref && (ref.match(/^I-/) || ref.match(/^US /) || ref.match(/^NY /))) {
+          return 'NYSDOT';
+        }
+        if (name.match(/Interstate|I-\d+|US-\d+|NY-\d+|State Route|Thruway/i)) {
+          return 'NYSDOT';
+        }
+        
+        if (coords && coords[0]) {
+          var lat = coords[0][0];
+          var lon = coords[0][1];
+          
+          for (var muni in boundaries) {
+            var b = boundaries[muni];
+            if (lat >= b[0][0] && lat <= b[1][0] && lon >= b[0][1] && lon <= b[1][1]) {
+              return muni;
+            }
+          }
+          
+          return lat > 43.1 ? 'Niagara County' : 'Erie County';
+        }
+        
+        return 'Other';
+      }
+
+      var roadsLoaded = 0;
+      
+      function loadRoads() {
+        var query = '[out:json][timeout:60];(way["highway"]["name"](42.75,-79.1,43.3,-78.5););out geom;';
+        
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+          .then(function(response) {
+            if (!response.ok) throw new Error('API request failed');
+            return response.json();
+          })
+          .then(function(data) {
+            document.getElementById('loading').style.display = 'none';
+            
+            if (!data.elements || data.elements.length === 0) {
+              console.log('No roads loaded');
+              return;
+            }
+            
+            console.log('Loaded ' + data.elements.length + ' roads');
+            
+            data.elements.forEach(function(element) {
+              if (element.type === 'way' && element.geometry && element.geometry.length > 1) {
+                var coords = element.geometry.map(function(node) {
+                  return [node.lat, node.lon];
+                });
+                
+                var jurisdiction = getJurisdiction(element.tags, coords);
+                var name = element.tags.name || 'Unnamed Road';
+                var roadType = element.tags.highway || 'unknown';
+                
+                var weight = 3;
+                if (roadType === 'motorway') weight = 7;
+                else if (roadType === 'trunk') weight = 6;
+                else if (roadType === 'primary') weight = 5;
+                else if (roadType === 'secondary') weight = 4;
+                
+                var line = L.polyline(coords, {
+                  color: colors[jurisdiction] || colors['Other'],
+                  weight: weight,
+                  opacity: 0.6
+                }).addTo(map);
+
+                var contactInfo = contacts[jurisdiction] || contacts['Other'];
+                var popupContent = '<div style="font-family: Arial; min-width: 220px;">' +
+                  '<strong style="font-size: 16px; display: block; margin-bottom: 10px; color: #333;">' + name + '</strong>' +
+                  '<div style="margin: 10px 0; padding: 10px 0; border-top: 1px solid #ddd;">' +
+                  '<strong style="color: #555;">Maintained by:</strong><br>' +
+                  '<span style="color: #333;">' + contactInfo.name + '</span>' +
+                  '</div>' +
+                  '<div style="padding-top: 10px; border-top: 1px solid #ddd; font-size: 13px; color: #666;">' +
+                  '<strong style="color: #555;">Contact:</strong><br>' + contactInfo.phone;
+                
+                if (contactInfo.alt) {
+                  popupContent += '<br>' + contactInfo.alt;
+                }
+                
+                popupContent += '</div></div>';
+                
+                line.bindPopup(popupContent);
+                
+                line.on('mouseover', function() {
+                  this.setStyle({ weight: weight + 2, opacity: 0.9 });
+                  this.openPopup();
+                });
+                
+                line.on('mouseout', function() {
+                  this.setStyle({ weight: weight, opacity: 0.6 });
+                });
+                
+                roadsLoaded++;
+              }
+            });
+            
+            console.log('Successfully rendered ' + roadsLoaded + ' roads');
+          })
+          .catch(function(error) {
+            document.getElementById('loading').innerHTML = 
+              '<div style="color: #e31a1c; font-size: 14px;">Unable to load road data.<br>Please refresh the page.</div>';
+            console.error('Error:', error);
+          });
+      }
+
+      var legend = L.control({ position: 'topright' });
+      legend.onAdd = function() {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = '<h4>Maintained By:</h4>';
+        
+        var mainJurisdictions = [
+          'NYSDOT',
+          'Erie County',
+          'Niagara County',
+          'Buffalo',
+          'Amherst',
+          'Cheektowaga',
+          'West Seneca',
+          'Hamburg'
+        ];
+        
+        mainJurisdictions.forEach(function(jurisdiction) {
+          div.innerHTML += 
+            '<div class="legend-item">' +
+            '<div class="legend-color" style="background:' + colors[jurisdiction] + '"></div>' +
+            '<span>' + jurisdiction + '</span>' +
+            '</div>';
+        });
+        
+        div.innerHTML += '<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 11px; color: #666;">Hover over any road for details</div>';
+        return div;
+      };
+      legend.addTo(map);
+
+      loadRoads();
+    })();
+  </script>
+</body>
+</html>
