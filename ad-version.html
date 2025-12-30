@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Road Maintenance Responsibility Map - Erie & Niagara Counties, NY</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; overflow: hidden; }
+    
+    /* Ad Banners */
+    .ad-banner {
+      width: 100%;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.3s;
+      z-index: 1001;
+    }
+    
+    .ad-banner:hover {
+      background: #e9ecef;
+    }
+    
+    .top-ad {
+      height: 90px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+    
+    .bottom-ad {
+      height: 70px;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+    
+    .ad-content {
+      padding: 15px;
+    }
+    
+    .ad-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #2c5aa0;
+      margin-bottom: 5px;
+    }
+    
+    .ad-description {
+      font-size: 14px;
+      color: #495057;
+    }
+    
+    .ad-label {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      font-size: 10px;
+      color: #6c757d;
+      text-transform: uppercase;
+    }
+    
+    /* Map Container */
+    #map { 
+      position: fixed;
+      top: 90px;
+      bottom: 70px;
+      left: 0;
+      right: 0;
+    }
+    
+    .header {
+      position: absolute;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 18px;
+      margin: 0 0 4px 0;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #666;
+      margin: 0;
+    }
+    
+    .legend {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      max-width: 240px;
+    }
+    
+    .legend h4 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .legend-item {
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      font-size: 12px;
+    }
+    
+    .legend-color {
+      width: 20px;
+      height: 4px;
+      margin-right: 8px;
+      border-radius: 2px;
+    }
+    
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: white;
+      padding: 25px 45px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .top-ad { height: 70px; }
+      .bottom-ad { height: 60px; }
+      #map { top: 70px; bottom: 60px; }
+      .header { top: 80px; }
+      .ad-title { font-size: 15px; }
+      .ad-description { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Ad Banner -->
+  <div class="ad-banner top-ad" id="topAd">
+    <span class="ad-label">Advertisement</span>
+    <div class="ad-content">
+      <div class="ad-title">Your Business Here</div>
+      <div class="ad-description">Advertise to local homeowners & property managers | Contact: ads@roadmap.com</div>
+    </div>
+  </div>
+  
+  <div class="header">
+    <h1>Road Maintenance Responsibility Map</h1>
+    <p>Erie & Niagara Counties, New York</p>
+  </div>
+  
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div>Loading road data...</div>
+  </div>
+  
+  <div id="map"></div>
+  
+  <!-- Bottom Ad Banner -->
+  <div class="ad-banner bottom-ad" id="bottomAd">
+    <span class="ad-label">Advertisement</span>
+    <div class="ad-content">
+      <div class="ad-title">Advertise Your Local Business</div>
+      <div class="ad-description">Reach thousands of local homeowners monthly</div>
+    </div>
+  </div>
+  
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function() {
+      // LOCAL BUSINESS ADS DATABASE
+      // Add your local advertisers here!
+      var topAds = [
+        {
+          title: "Joe's Paving & Driveway Repair",
+          description: "Pothole repair, driveway sealing & resurfacing | Serving Erie County for 25 years",
+          url: "https://example.com",
+          phone: "(716) 555-1234"
+        },
+        {
+          title: "Buffalo Auto Body & Collision",
+          description: "Pothole damage? We fix it! Free estimates | Insurance claims welcome",
+          url: "https://example.com",
+          phone: "(716) 555-5678"
+        },
+        {
+          title: "Smith Insurance Agency",
+          description: "Protect your vehicle from road damage | Auto & Home Insurance | Local family owned",
+          url: "https://example.com",
+          phone: "(716) 555-9012"
+        },
+        {
+          title: "Your Business Here",
+          description: "Advertise to local homeowners & property managers | Contact: ads@roadmap.com",
+          url: "#contact",
+          phone: ""
+        }
+      ];
+
+      var bottomAds = [
+        {
+          title: "WNY Home Improvement",
+          description: "Driveways • Walkways • Foundations | Free consultations",
+          url: "https://example.com",
+          phone: "(716) 555-3456"
+        },
+        {
+          title: "Mike's Tire & Auto",
+          description: "Wheel alignment, suspension repair, new tires | 6 WNY locations",
+          url: "https://example.com",
+          phone: "(716) 555-7890"
+        },
+        {
+          title: "Advertise Your Local Business",
+          description: "Reach thousands of local homeowners monthly | Starting at $99/month",
+          url: "#contact",
+          phone: ""
+        }
+      ];
+
+      // Ad rotation logic
+      var currentTopAd = 0;
+      var currentBottomAd = 0;
+
+      function rotateAd(adArray, currentIndex, elementId) {
+        var ad = adArray[currentIndex];
+        var element = document.getElementById(elementId);
+        
+        var content = '<span class="ad-label">Advertisement</span><div class="ad-content">';
+        content += '<div class="ad-title">' + ad.title + '</div>';
+        content += '<div class="ad-description">' + ad.description;
+        if (ad.phone) content += ' | ' + ad.phone;
+        content += '</div></div>';
+        
+        element.innerHTML = content;
+        element.onclick = function() {
+          if (ad.url && ad.url !== '#contact') {
+            window.open(ad.url, '_blank');
+          }
+        };
+        
+        return (currentIndex + 1) % adArray.length;
+      }
+
+      // Rotate ads every 15 seconds
+      setInterval(function() {
+        currentTopAd = rotateAd(topAds, currentTopAd, 'topAd');
+      }, 15000);
+
+      setInterval(function() {
+        currentBottomAd = rotateAd(bottomAds, currentBottomAd, 'bottomAd');
+      }, 15000);
+
+      // Initialize first ads
+      rotateAd(topAds, 0, 'topAd');
+      rotateAd(bottomAds, 0, 'bottomAd');
+
+      // MAP CODE
+      var map = L.map('map').setView([43.0, -78.85], 10);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      var colors = {
+        'NYSDOT': '#e31a1c',
+        'Erie County': '#ff7f00',
+        'Niagara County': '#ff9f40',
+        'Buffalo': '#1f78b4',
+        'Lackawanna': '#2171b5',
+        'Tonawanda': '#4292c6',
+        'North Tonawanda': '#6baed6',
+        'Lockport': '#9ecae1',
+        'Niagara Falls': '#2b8cbe',
+        'Amherst': '#33a02c',
+        'Tonawanda (Town)': '#66c2a5',
+        'Cheektowaga': '#8dd3c7',
+        'West Seneca': '#41ab5d',
+        'Hamburg': '#74c476',
+        'Lancaster': '#a1d99b',
+        'Orchard Park': '#c7e9c0',
+        'Grand Island': '#addd8e',
+        'Clarence': '#78c679',
+        'Kenmore': '#b2df8a',
+        'Other': '#999999'
+      };
+
+      var contacts = {
+        'NYSDOT': { phone: '(716) 847-3238', name: 'NYSDOT Region 5' },
+        'Erie County': { phone: '(716) 858-8300', alt: 'Potholes: (716) 858-7966', name: 'Erie County DPW' },
+        'Niagara County': { phone: '(716) 439-7242', name: 'Niagara County DPW' },
+        'Buffalo': { phone: '(716) 851-5636', name: 'City of Buffalo DPW' },
+        'Amherst': { phone: '(716) 631-7117', name: 'Town of Amherst Highway' },
+        'Cheektowaga': { phone: '(716) 686-3400', name: 'Town of Cheektowaga Highway' },
+        'West Seneca': { phone: '(716) 674-4850', name: 'Town of West Seneca Highway' },
+        'Hamburg': { phone: '(716) 649-6111', name: 'Town of Hamburg Highway' },
+        'Lancaster': { phone: '(716) 683-1680', name: 'Town of Lancaster Highway' },
+        'Tonawanda (Town)': { phone: '(716) 877-8800', name: 'Town of Tonawanda Highway' },
+        'North Tonawanda': { phone: '(716) 693-1010', name: 'City of North Tonawanda DPW' },
+        'Niagara Falls': { phone: '(716) 286-4300', name: 'City of Niagara Falls DPW' },
+        'Lockport': { phone: '(716) 439-6680', name: 'City of Lockport DPW' },
+        'Other': { phone: 'Contact local municipality', name: 'Local Municipality' }
+      };
+
+      var boundaries = {
+        'Buffalo': [[42.82, -78.92], [42.97, -78.79]],
+        'Amherst': [[42.93, -78.86], [43.08, -78.70]],
+        'Cheektowaga': [[42.88, -78.82], [42.98, -78.69]],
+        'West Seneca': [[42.80, -78.85], [42.88, -78.70]],
+        'Tonawanda (Town)': [[42.96, -78.93], [43.03, -78.86]],
+        'North Tonawanda': [[43.02, -78.93], [43.07, -78.84]],
+        'Niagara Falls': [[43.05, -79.08], [43.12, -78.98]],
+        'Lockport': [[43.15, -78.74], [43.20, -78.66]],
+        'Hamburg': [[42.68, -78.88], [42.76, -78.78]],
+        'Lancaster': [[42.87, -78.70], [42.92, -78.60]],
+        'Grand Island': [[42.98, -78.99], [43.06, -78.93]],
+        'Kenmore': [[42.95, -78.88], [42.98, -78.85]]
+      };
+
+      function getJurisdiction(tags, coords) {
+        var highway = tags.highway || '';
+        var name = tags.name || '';
+        var ref = tags.ref || '';
+        
+        if (highway === 'motorway' || highway === 'motorway_link' || highway === 'trunk') {
+          return 'NYSDOT';
+        }
+        if (ref && (ref.match(/^I-/) || ref.match(/^US /) || ref.match(/^NY /))) {
+          return 'NYSDOT';
+        }
+        
+        if (coords && coords[0]) {
+          var lat = coords[0][0];
+          var lon = coords[0][1];
+          
+          for (var muni in boundaries) {
+            var b = boundaries[muni];
+            if (lat >= b[0][0] && lat <= b[1][0] && lon >= b[0][1] && lon <= b[1][1]) {
+              return muni;
+            }
+          }
+          
+          return lat > 43.1 ? 'Niagara County' : 'Erie County';
+        }
+        
+        return 'Other';
+      }
+
+      function loadRoads() {
+        var query = '[out:json][timeout:60];(way["highway"]["name"](42.75,-79.1,43.3,-78.5););out geom;';
+        
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+          .then(function(response) {
+            if (!response.ok) throw new Error('API failed');
+            return response.json();
+          })
+          .then(function(data) {
+            document.getElementById('loading').style.display = 'none';
+            
+            if (!data.elements) return;
+            
+            data.elements.forEach(function(element) {
+              if (element.type === 'way' && element.geometry && element.geometry.length > 1) {
+                var coords = element.geometry.map(function(node) {
+                  return [node.lat, node.lon];
+                });
+                
+                var jurisdiction = getJurisdiction(element.tags, coords);
+                var name = element.tags.name || 'Unnamed Road';
+                var roadType = element.tags.highway || 'unknown';
+                
+                var weight = 3;
+                if (roadType === 'motorway') weight = 7;
+                else if (roadType === 'trunk') weight = 6;
+                else if (roadType === 'primary') weight = 5;
+                else if (roadType === 'secondary') weight = 4;
+                
+                var line = L.polyline(coords, {
+                  color: colors[jurisdiction] || colors['Other'],
+                  weight: weight,
+                  opacity: 0.6
+                }).addTo(map);
+
+                var contactInfo = contacts[jurisdiction] || contacts['Other'];
+                var popupContent = '<div style="font-family: Arial; min-width: 220px;">' +
+                  '<strong style="font-size: 16px; display: block; margin-bottom: 10px;">' + name + '</strong>' +
+                  '<div style="margin: 10px 0; padding: 10px 0; border-top: 1px solid #ddd;">' +
+                  '<strong>Maintained by:</strong><br>' + contactInfo.name +
+                  '</div>' +
+                  '<div style="padding-top: 10px; border-top: 1px solid #ddd; font-size: 13px;">' +
+                  '<strong>Contact:</strong><br>' + contactInfo.phone;
+                
+                if (contactInfo.alt) {
+                  popupContent += '<br>' + contactInfo.alt;
+                }
+                
+                popupContent += '</div></div>';
+                
+                line.bindPopup(popupContent);
+                
+                line.on('mouseover', function() {
+                  this.setStyle({ weight: weight + 2, opacity: 0.9 });
+                  this.openPopup();
+                });
+                
+                line.on('mouseout', function() {
+                  this.setStyle({ weight: weight, opacity: 0.6 });
+                });
+              }
+            });
+          })
+          .catch(function(error) {
+            document.getElementById('loading').innerHTML = 
+              '<div style="color: #e31a1c;">Unable to load roads. Please refresh.</div>';
+            console.error('Error:', error);
+          });
+      }
+
+      var legend = L.control({ position: 'topright' });
+      legend.onAdd = function() {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML = '<h4>Maintained By:</h4>';
+        
+        var mainJurisdictions = ['NYSDOT', 'Erie County', 'Niagara County', 'Buffalo', 'Amherst', 'Cheektowaga', 'West Seneca', 'Hamburg'];
+        
+        mainJurisdictions.forEach(function(jurisdiction) {
+          div.innerHTML += 
+            '<div class="legend-item">' +
+            '<div class="legend-color" style="background:' + colors[jurisdiction] + '"></div>' +
+            '<span>' + jurisdiction + '</span>' +
+            '</div>';
+        });
+        
+        div.innerHTML += '<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #ddd; font-size: 11px;">Hover for details</div>';
+        return div;
+      };
+      legend.addTo(map);
+
+      loadRoads();
+    })();
+  </script>
+</body>
+</html>
