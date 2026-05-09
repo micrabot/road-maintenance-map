@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Road Maintenance Responsibility Map - Erie & Niagara Counties, NY</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; height: 100vh; overflow: hidden; }
+    
+    #map { 
+      position: fixed;
+      top: 0;
+      bottom: 50px;
+      left: 0;
+      right: 0;
+    }
+    
+    .header {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 20px;
+      margin: 0 0 5px 0;
+      font-weight: 600;
+      color: #333;
+    }
+    
+    .header p {
+      font-size: 13px;
+      color: #666;
+      margin: 0;
+    }
+
+
+    .beta-badge {
+      display: inline-block;
+      background: #ff9800;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 14px;
+      margin-left: 10px;
+      vertical-align: middle;
+      letter-spacing: 0.5px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+
+    .beta-subtitle {
+      font-size: 11px;
+      color: #888;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    .beta-footer {
+      position: fixed;
+      bottom: 50px;
+      left: 0;
+      right: 0;
+      background: rgba(255,152,0,0.95);
+      color: white;
+      text-align: center;
+      padding: 6px 12px;
+      z-index: 1000;
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.2);
+    }
+    
+    .legend {
+      background: white;
+      padding: 15px;
+      border-radius: 6px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      max-width: 250px;
+    }
+    
+    .legend h4 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .legend-toggle {
+      font-size: 18px;
+      color: #666;
+    }
+    
+    .legend-content {
+      transition: max-height 0.3s ease;
+      overflow: hidden;
+    }
+    
+    .legend-item {
+      margin: 8px 0;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+    
+    .legend-color {
+      width: 24px;
+      height: 4px;
+      margin-right: 10px;
+      border-radius: 2px;
+    }
+    
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 50px;
+      background: #2c3e50;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+      font-size: 13px;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+    }
+    
+    footer a {
+      color: #3498db;
+      text-decoration: none;
+      margin: 0 15px;
+      transition: color 0.3s;
+    }
+    
+    footer a:hover {
+      color: #5dade2;
+      text-decoration: underline;
+    }
+    
+    .footer-separator {
+      color: #7f8c8d;
+      margin: 0 5px;
+    }
+    
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2000;
+      background: white;
+      padding: 25px 45px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    
+    .loading-text {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .header h1 { font-size: 16px; }
+      .header p { font-size: 11px; }
+      footer { 
+        font-size: 11px;
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px;
+        text-align: center;
+      }
+      footer a { margin: 0 8px; }
+      #map { bottom: 60px; }
+      .beta-footer {
+        bottom: 60px;
+        font-size: 11px;
+        padding: 8px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>
+      Road Maintenance Responsibility Map
+      <span class="beta-badge">BETA</span>
+    </h1>
+    <p>
+      Erie & Niagara Counties, New York<br>
+      <span class="beta-subtitle">
+        Public beta — road jurisdiction data may contain inaccuracies.
+      </span>
+    </p>
+  </div>
+  
+  <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading boundaries and road data...</div>
+  </div>
+  
+  <div id="map"></div>
+  
+  <div class="beta-footer">
+    This project is currently in public beta and provided for informational purposes only. Verify road responsibility with the appropriate agency.
+  </div>
+
+  <footer>
+    <a href="about.html">About</a>
+    <span class="footer-separator">|</span>
+    <a href="contact.html">Contact</a>
+    <span class="footer-separator">|</span>
+    <a href="privacy.html">Privacy Policy</a>
+    <span class="footer-separator">|</span>
+    <a href="terms.html">Terms of Service</a>
+    <span class="footer-separator">|</span>
+    <span>© 2025 Road Maintenance Map</span>
+  </footer>
+  
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    (function() {
+      var map = L.map('map').setView([43.0, -78.85], 10);
+      
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      var colors = {
+        'NYSDOT': '#e31a1c',
+        'Erie County': '#ff7f00',
+        'Niagara County': '#ff9f40',
+        'Buffalo': '#1f78b4',
+        'Lackawanna': '#2171b5',
+        'Tonawanda': '#4292c6',
+        'North Tonawanda': '#6baed6',
+        'Lockport': '#9ecae1',
+        'Niagara Falls': '#2b8cbe',
+        'Amherst': '#33a02c',
+        'Tonawanda (Town)': '#66c2a5',
+        'Cheektowaga': '#8dd3c7',
+        'West Seneca': '#41ab5d',
+        'Hamburg': '#74c476',
+        'Lancaster': '#a1d99b',
+        'Orchard Park': '#c7e9c0',
+        'Grand Island': '#addd8e',
+        'Clarence': '#78c679',
+        'Kenmore': '#b2df8a',
+        'Other': '#999999'
+      };
+
+      var contacts = {
+        'NYSDOT': { phone: '(716) 847-3238', name: 'NYSDOT Region 5' },
+        'Erie County': { phone: '(716) 858-8300', alt: 'Potholes: (716) 858-7966', name: 'Erie County DPW' },
+        'Niagara County': { phone: '(716) 439-7242', name: 'Niagara County DPW' },
+        'Buffalo': { phone: '(716) 851-5636', name: 'City of Buffalo DPW' },
+        'Lackawanna': { phone: '(716) 827-6486', name: 'City of Lackawanna DPW' },
+        'Tonawanda': { phone: '(716) 695-8555', name: 'City of Tonawanda DPW' },
+        'Amherst': { phone: '(716) 631-7117', name: 'Town of Amherst Highway' },
+        'Cheektowaga': { phone: '(716) 686-3400', name: 'Town of Cheektowaga Highway' },
+        'West Seneca': { phone: '(716) 674-4850', name: 'Town of West Seneca Highway' },
+        'Hamburg': { phone: '(716) 649-6111', name: 'Town of Hamburg Highway' },
+        'Lancaster': { phone: '(716) 683-1680', name: 'Town of Lancaster Highway' },
+        'Tonawanda (Town)': { phone: '(716) 877-8800', name: 'Town of Tonawanda Highway' },
+        'North Tonawanda': { phone: '(716) 693-1010', name: 'City of North Tonawanda DPW' },
+        'Niagara Falls': { phone: '(716) 286-4300', name: 'City of Niagara Falls DPW' },
+        'Lockport': { phone: '(716) 439-6680', name: 'City of Lockport DPW' },
+        'Grand Island': { phone: '(716) 773-9600', name: 'Town of Grand Island Highway' },
+        'Clarence': { phone: '(716) 741-8940', name: 'Town of Clarence Highway' },
+        'Orchard Park': { phone: '(716) 662-6410', name: 'Town of Orchard Park Highway' },
+        'Kenmore': { phone: '(716) 873-5958', name: 'Village of Kenmore DPW' },
+        'Other': { phone: 'Contact local municipality', name: 'Local Municipality' }
+      };
+
+      // Store municipal boundaries
+      var municipalBoundaries = {};
+      var boundariesLoaded = false;
+
+      // Point in polygon algorithm
+      function pointInPolygon(point, polygon) {
+        var x = point[0], y = point[1];
+        var inside = false;
+        for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+          var xi = polygon[i][0], yi = polygon[i][1];
+          var xj = polygon[j][0], yj = polygon[j][1];
+          var intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
+      // Check point against all municipal boundaries
+      function findMunicipality(lat, lon) {
+        // Filter out Ontario/Canada (west of Niagara River)
+        if (lon < -79.08) return null;
+        
+        // Check each loaded municipal boundary
+        for (var muniName in municipalBoundaries) {
+          var boundary = municipalBoundaries[muniName];
+          if (boundary && boundary.length > 0) {
+            if (pointInPolygon([lat, lon], boundary)) {
+              return muniName;
+            }
+          }
+        }
+        
+        // Fallback to county based on latitude
+        if (lat > 43.1) return 'Niagara County';
+        if (lat >= 42.5 && lat <= 43.1 && lon >= -79.0 && lon <= -78.5) return 'Erie County';
+        return 'Other';
+      }
+
+      function getJurisdiction(tags, coords) {
+        var highway = tags.highway || '';
+        var name = tags.name || '';
+        var ref = tags.ref || '';
+        
+        // State routes have priority
+        if (highway === 'motorway' || highway === 'motorway_link' || highway === 'trunk') {
+          return 'NYSDOT';
+        }
+        if (ref && (ref.match(/^I-/) || ref.match(/^US /) || ref.match(/^NY /))) {
+          return 'NYSDOT';
+        }
+        if (name.match(/Interstate|I-\d+|US-\d+|NY-\d+|State Route|Thruway/i)) {
+          return 'NYSDOT';
+        }
+        
+        // Use municipal boundaries if loaded
+        if (boundariesLoaded && coords && coords[0]) {
+          return findMunicipality(coords[0][0], coords[0][1]);
+        }
+        
+        // Fallback
+        if (coords && coords[0]) {
+          var lat = coords[0][0];
+          if (lat > 43.1) return 'Niagara County';
+          if (lat >= 42.5 && lat <= 43.1) return 'Erie County';
+        }
+        
+        return 'Other';
+      }
+
+      // Load municipal boundaries from OSM
+      function loadMunicipalBoundaries() {
+        document.getElementById('loading').querySelector('.loading-text').textContent = 'Loading municipal boundaries...';
+        
+        // Query for Erie County municipalities
+        var erieQuery = '[out:json][timeout:90];area["name"="Erie County"]["admin_level"="6"]->.county;(relation["admin_level"~"^(7|8)$"]["boundary"="administrative"](area.county););out geom;';
+        
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: erieQuery
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            console.log('Loaded Erie County boundaries:', data.elements.length);
+            
+            data.elements.forEach(function(element) {
+              if (element.type === 'relation' && element.tags && element.tags.name) {
+                var muniName = element.tags.name.replace(/^(City|Town|Village) of /, '');
+                var coords = [];
+                
+                // Extract outer boundary coordinates
+                if (element.members) {
+                  element.members.forEach(function(member) {
+                    if (member.role === 'outer' && member.geometry) {
+                      member.geometry.forEach(function(node) {
+                        coords.push([node.lat, node.lon]);
+                      });
+                    }
+                  });
+                }
+                
+                if (coords.length > 0) {
+                  municipalBoundaries[muniName] = coords;
+                  console.log('Loaded boundary for:', muniName, coords.length, 'points');
+                }
+              }
+            });
+            
+            // Now load Niagara County
+            loadNiagaraBoundaries();
+          })
+          .catch(function(error) {
+            console.error('Error loading Erie boundaries:', error);
+            // Continue with roads even if boundaries fail
+            boundariesLoaded = false;
+            loadRoads();
+          });
+      }
+
+      function loadNiagaraBoundaries() {
+        var niagaraQuery = '[out:json][timeout:90];area["name"="Niagara County"]["admin_level"="6"]->.county;(relation["admin_level"~"^(7|8)$"]["boundary"="administrative"](area.county););out geom;';
+        
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: niagaraQuery
+        })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            console.log('Loaded Niagara County boundaries:', data.elements.length);
+            
+            data.elements.forEach(function(element) {
+              if (element.type === 'relation' && element.tags && element.tags.name) {
+                var muniName = element.tags.name.replace(/^(City|Town|Village) of /, '');
+                var coords = [];
+                
+                if (element.members) {
+                  element.members.forEach(function(member) {
+                    if (member.role === 'outer' && member.geometry) {
+                      member.geometry.forEach(function(node) {
+                        coords.push([node.lat, node.lon]);
+                      });
+                    }
+                  });
+                }
+                
+                if (coords.length > 0) {
+                  municipalBoundaries[muniName] = coords;
+                  console.log('Loaded boundary for:', muniName, coords.length, 'points');
+                }
+              }
+            });
+            
+            boundariesLoaded = true;
+            console.log('All boundaries loaded. Total municipalities:', Object.keys(municipalBoundaries).length);
+            loadRoads();
+          })
+          .catch(function(error) {
+            console.error('Error loading Niagara boundaries:', error);
+            boundariesLoaded = false;
+            loadRoads();
+          });
+      }
+
+      function loadRoads() {
+        document.getElementById('loading').querySelector('.loading-text').textContent = 'Loading roads...';
+        
+        var query = '[out:json][timeout:60];(way["highway"]["name"](42.75,-79.1,43.3,-78.5););out geom;';
+        
+        fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+          .then(function(response) {
+            if (!response.ok) throw new Error('API failed');
+            return response.json();
+          })
+          .then(function(data) {
+            document.getElementById('loading').style.display = 'none';
+            
+            if (!data.elements) return;
+            
+            console.log('Processing', data.elements.length, 'roads');
+            
+            data.elements.forEach(function(element) {
+              if (element.type === 'way' && element.geometry && element.geometry.length > 1) {
+                var coords = element.geometry.map(function(node) {
+                  return [node.lat, node.lon];
+                });
+                
+                var jurisdiction = getJurisdiction(element.tags, coords);
+                if (!jurisdiction) return;
+                
+                var name = element.tags.name || 'Unnamed Road';
+                var roadType = element.tags.highway || 'unknown';
+                
+                var weight = 3;
+                if (roadType === 'motorway') weight = 7;
+                else if (roadType === 'trunk') weight = 6;
+                else if (roadType === 'primary') weight = 5;
+                else if (roadType === 'secondary') weight = 4;
+                
+                var line = L.polyline(coords, {
+                  color: colors[jurisdiction] || colors['Other'],
+                  weight: weight,
+                  opacity: 0.6
+                }).addTo(map);
+
+                var contactInfo = contacts[jurisdiction] || contacts['Other'];
+                var popupContent = '<div style="font-family: Arial; min-width: 220px;">' +
+                  '<strong style="font-size: 16px; display: block; margin-bottom: 10px; color: #333;">' + name + '</strong>' +
+                  '<div style="margin: 10px 0; padding: 10px 0; border-top: 1px solid #ddd;">' +
+                  '<strong style="color: #555;">Maintained by:</strong><br>' +
+                  '<span style="color: #333;">' + contactInfo.name + '</span>' +
+                  '</div>' +
+                  '<div style="padding-top: 10px; border-top: 1px solid #ddd; font-size: 13px; color: #666;">' +
+                  '<strong style="color: #555;">Contact:</strong><br>' + contactInfo.phone;
+                
+                if (contactInfo.alt) {
+                  popupContent += '<br>' + contactInfo.alt;
+                }
+                
+                popupContent += '</div></div>';
+                
+                line.bindPopup(popupContent);
+                
+                line.on('mouseover', function() {
+                  this.setStyle({ weight: weight + 2, opacity: 0.9 });
+                  this.openPopup();
+                });
+                
+                line.on('mouseout', function() {
+                  this.setStyle({ weight: weight, opacity: 0.6 });
+                });
+              }
+            });
+            
+            console.log('Roads loaded successfully');
+          })
+          .catch(function(error) {
+            document.getElementById('loading').innerHTML = 
+              '<div style="color: #e31a1c; font-size: 14px;">Unable to load road data.<br>Please refresh the page.</div>';
+            console.error('Error:', error);
+          });
+      }
+
+      var legend = L.control({ position: 'topright' });
+      legend.onAdd = function() {
+        var div = L.DomUtil.create('div', 'legend');
+        
+        var isMobile = window.innerWidth <= 768;
+        var isCollapsed = isMobile;
+        
+        div.innerHTML = '<h4 onclick="toggleLegend()">Maintained By: <span class="legend-toggle" id="legendToggle">' + (isCollapsed ? '▼' : '▲') + '</span></h4>';
+        div.innerHTML += '<div class="legend-content" id="legendContent" style="max-height: ' + (isCollapsed ? '0' : '500px') + ';">';
+        
+        var mainJurisdictions = [
+          'NYSDOT',
+          'Erie County',
+          'Niagara County',
+          'Buffalo',
+          'Amherst',
+          'Cheektowaga',
+          'West Seneca',
+          'Hamburg'
+        ];
+        
+        mainJurisdictions.forEach(function(jurisdiction) {
+          div.innerHTML += 
+            '<div class="legend-item">' +
+            '<div class="legend-color" style="background:' + colors[jurisdiction] + '"></div>' +
+            '<span>' + jurisdiction + '</span>' +
+            '</div>';
+        });
+        
+        div.innerHTML += '<div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 11px; color: #666;">Hover over any road for details</div>';
+        div.innerHTML += '</div>';
+        
+        return div;
+      };
+      legend.addTo(map);
+      
+      window.toggleLegend = function() {
+        var content = document.getElementById('legendContent');
+        var toggle = document.getElementById('legendToggle');
+        var isCollapsed = content.style.maxHeight === '0px';
+        
+        if (isCollapsed) {
+          content.style.maxHeight = '500px';
+          toggle.textContent = '▲';
+        } else {
+          content.style.maxHeight = '0px';
+          toggle.textContent = '▼';
+        }
+      };
+
+      // Start by loading municipal boundaries first
+      loadMunicipalBoundaries();
+    })();
+  </script>
+</body>
+</html>
